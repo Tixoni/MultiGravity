@@ -1,16 +1,16 @@
 ﻿#requires -version 5.1
-# Antigravity Launcher: небольшой загрузчик профилей pgrav (ParaGravity).
+# MultiGravity: лаунчер нескольких аккаунтов Antigravity поверх pgrav (ParaGravity).
 # Статусы читаются напрямую (папки профилей + процессы), pgrav вызывается только для действий.
 param([string]$Snapshot, [string]$SnapshotView)
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Drawing, Microsoft.VisualBasic
 
-$WindowTitle = 'Antigravity · Аккаунты'
+$WindowTitle = 'MultiGravity'
 
 # --- один экземпляр ---------------------------------------------------------
 if (-not $Snapshot) {
     $created = $false
-    $script:Mutex = New-Object System.Threading.Mutex($true, 'Local\AntigravityLauncher', [ref]$created)
+    $script:Mutex = New-Object System.Threading.Mutex($true, 'Local\MultiGravity', [ref]$created)
     if (-not $created) {
         try { [Microsoft.VisualBasic.Interaction]::AppActivate($WindowTitle) } catch {}
         return
@@ -33,11 +33,11 @@ if (-not (Test-Path $script:Pgrav)) {
     if ($pgravCmd) { $script:Pgrav = $pgravCmd.Source } else { $script:Pgrav = Join-Path $env:USERPROFILE '.paragravity\bin\pgrav.cmd' }
 }
 
-$script:TempDir = Join-Path $env:TEMP 'agy-launcher'
+$script:TempDir = Join-Path $env:TEMP 'multigravity'
 New-Item -ItemType Directory -Force $script:TempDir | Out-Null
 
 # кеш почты, тарифа и лимитов: лимиты отдаёт только запущенный аккаунт
-$script:CacheFile = Join-Path $env:LOCALAPPDATA 'AntigravityLauncher\cache.json'
+$script:CacheFile = Join-Path $env:LOCALAPPDATA 'MultiGravity\cache.json'
 
 # статистика считается stats.py по локальной истории разговоров
 $script:StatsPy = Join-Path $PSScriptRoot 'stats.py'
@@ -307,7 +307,7 @@ $WindowXaml = @'
             <Image x:Name="Logo" Margin="6"/>
           </Border>
           <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="Antigravity" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="MultiGravity" FontSize="15" FontWeight="SemiBold"/>
             <TextBlock x:Name="Subtitle" Text="Аккаунты" FontSize="12" Foreground="#8E8E96" Margin="0,1,0,0"/>
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
@@ -1508,8 +1508,11 @@ foreach ($n in 'Header', 'Logo', 'Subtitle', 'BtnMin', 'BtnClose', 'List', 'BtnN
     Set-Variable -Name $n -Value $Window.FindName($n) -Scope Script
 }
 
-$script:AppIcon = Get-ExeIcon $script:AgyExe
-if ($script:AppIcon) { $Logo.Source = $script:AppIcon; $Window.Icon = $script:AppIcon }
+$script:AppIcon = Get-ExeIcon $script:AgyExe   # значок основного аккаунта в списке
+# своя иконка для окна (её собирает install.ps1); без неё — значок Antigravity
+$ownIcon = Join-Path $PSScriptRoot 'multigravity.ico'
+$winIcon = if (Test-Path $ownIcon) { [Windows.Media.Imaging.BitmapFrame]::Create([Uri]$ownIcon) } else { $script:AppIcon }
+if ($winIcon) { $Logo.Source = $winIcon; $Window.Icon = $winIcon }
 
 $Header.Add_MouseLeftButtonDown({ try { $Window.DragMove() } catch {} })
 $BtnMin.Add_Click({ $Window.WindowState = 'Minimized' })
